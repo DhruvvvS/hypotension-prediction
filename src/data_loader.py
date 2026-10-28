@@ -1,10 +1,10 @@
 import numpy as np
 import pandas as pd
 
-OBS_MIN = 10        # minutes of history the model sees
-HORIZON_MIN = 15    # how far ahead we look for an event
-MAP_FLOOR = 65      # mmHg, hypotension threshold
-AREA_LIMIT = 20     # mmHg*min below the floor that counts as an event (tune after EDA)
+OBS_MIN = 10       
+HORIZON_MIN = 15    
+MAP_FLOOR = 65      
+AREA_LIMIT = 20     
 
 FEATURES = ["cur_map", "mean_map", "std_map", "min_map", "slope", "delta5", "age"]
 
@@ -16,7 +16,6 @@ def load_raw(path=None, n_cases=80, seed=0):
 
 
 def _fake_cases(n_cases, seed):
-    # stand-in data so the pipeline runs before the real preprocessing lands
     rng = np.random.default_rng(seed)
     frames = []
     for cid in range(n_cases):
@@ -24,7 +23,7 @@ def _fake_cases(n_cases, seed):
         base = rng.normal(88, 8)
         drift = np.cumsum(rng.normal(0, 1.2, n))
         series = base + drift - 0.02 * np.arange(n)
-        for _ in range(rng.integers(0, 3)):  # a couple of dips per case
+        for _ in range(rng.integers(0, 3)):  
             s = rng.integers(20, n - 25)
             series[s:s + 12] -= rng.uniform(15, 30)
         frames.append(pd.DataFrame({
