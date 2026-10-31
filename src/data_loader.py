@@ -56,9 +56,11 @@ def make_windows(df):
         age = g["age"].iloc[0]
         for t in range(OBS_MIN, len(m) - HORIZON_MIN):
             obs = m[t - OBS_MIN:t]
+            future = m[t:t + HORIZON_MIN]
+            if np.isnan(obs).any() or np.isnan(future).any():
+                continue  
             if obs[-1] < MAP_FLOOR:
                 continue  # already hypotensive, nothing to predict
-            future = m[t:t + HORIZON_MIN]
             area = np.clip(MAP_FLOOR - future, 0, None).sum()
             rows.append({"case_id": cid, **window_features(obs, age), "label": int(area >= AREA_LIMIT)})
     return pd.DataFrame(rows)

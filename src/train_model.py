@@ -1,5 +1,6 @@
 import json
 import os
+import sys
 import numpy as np
 import xgboost as xgb
 from sklearn.model_selection import GroupShuffleSplit
@@ -66,4 +67,4 @@ def main(csv_path=None):
 
 
 if __name__ == "__main__":
-    main()
+    main(sys.argv[1] if len(sys.argv) > 1 else None)
