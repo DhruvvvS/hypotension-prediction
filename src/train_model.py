@@ -27,6 +27,7 @@ def main(csv_path=None):
         subsample=0.8, colsample_bytree=0.8,
         scale_pos_weight=pos_weight, eval_metric="aucpr",
         early_stopping_rounds=30,
+        random_state=42,
     )
     model.fit(train[FEATURES], train["label"],
               eval_set=[(val[FEATURES], val["label"])], verbose=False)
