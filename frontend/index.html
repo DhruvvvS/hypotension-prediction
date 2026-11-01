@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>IOH early warning (simulated data)</title>
+<style>
+  :root { --bg:#f4f6f5; --card:#fff; --ink:#1d2b2a; --muted:#667573; --teal:#0f766e; --red:#b42318; --line:#dde4e2; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif; }
+  main { max-width:640px; margin:0 auto; padding:32px 18px 60px; }
+  h1 { font-size:1.5rem; margin:0 0 4px; }
+  p.sub { color:var(--muted); margin:0 0 24px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:20px; margin-bottom:16px; }
+  label { display:block; font-weight:600; margin:0 0 6px; }
+  input, textarea { width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:8px; font:inherit; }
+  input:focus, textarea:focus { outline:2px solid var(--teal); border-color:transparent; }
+  .row { margin-bottom:14px; }
+  small { color:var(--muted); }
+  button { background:var(--teal); color:#fff; border:0; padding:11px 20px; border-radius:8px; font:inherit; font-weight:600; cursor:pointer; }
+  button:hover { background:#0b5f58; }
+  button:disabled { background:#8aa6a3; cursor:wait; }
+  .big { font-size:2.4rem; font-weight:700; }
+  .ok { color:var(--teal); } .bad { color:var(--red); }
+  .bar { height:8px; background:var(--line); border-radius:4px; overflow:hidden; margin:4px 0 12px; }
+  .bar span { display:block; height:100%; }
+  .drv { display:flex; justify-content:space-between; font-size:.92rem; }
+  .note { font-size:.82rem; color:var(--muted); }
+  .err { color:var(--red); margin-top:12px; }
+  .banner { background:#fff7e0; border:1px solid #f0d58a; border-radius:8px; padding:10px 14px; font-size:.9rem; margin-bottom:16px; }
+</style></head>
+<body><main>
+  <h1>Intraoperative hypotension early warning</h1>
+  <p class="sub">Score for a MAP drop below 65 mmHg in the next 15 minutes.</p>
+  <div class="banner">Demo trained on <strong>simulated</strong> data. Not for clinical use.</div>
+
+  <div class="card">
+    <div class="row">
+      <label for="maps">Last 10 MAP readings (one per minute, oldest first)</label>
+      <textarea id="maps" rows="2">84, 83, 82, 80, 79, 77, 76, 74, 73, 71</textarea>
+      <small>Comma separated, mmHg (20 to 200).</small>
+    </div>
+    <div class="row">
+      <label for="age">Age</label>
+      <input id="age" type="number" value="62" min="1" max="110">
+    </div>
+    <button id="go">Estimate risk</button>
+    <div id="err" class="err" hidden></div>
+  </div>
+
+  <div class="card" id="out" hidden>
+    <div class="big" id="risk"></div>
+    <div id="verdict"></div>
+    <h3 style="margin:18px 0 8px">What moved the estimate</h3>
+    <div id="drivers"></div>
+    <p class="note">The score is a relative ranking from a weighted model, not a calibrated probability.</p>
+  </div>
+
+  <p class="note">Course project. Model trained on simulated patients only.</p>
+</main>
+<script src="config.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+$("go").onclick = async () => {
+  $("err").hidden = true;
+  const readings = $("maps").value.split(",").map(s => Number(s.trim())).filter(n => !isNaN(n));
+  if (readings.length !== 10) { $("err").textContent = "Please enter exactly 10 readings."; $("err").hidden = false; return; }
+  $("go").disabled = true;
+  try {
+    const res = await fetch(window.API_URL + "/predict", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({readings, age: Number($("age").value)})
+    });
+    if (!res.ok) throw new Error("Input rejected: check the readings are 20 to 200 and age is 1 to 110.");
+    const d = await res.json();
+    $("out").hidden = false;
+    $("risk").textContent = "Risk score " + d.risk.toFixed(2);
+    $("risk").className = "big " + (d.alert ? "bad" : "ok");
+    $("verdict").textContent = d.alert
+      ? "Above the alert threshold (" + d.threshold.toFixed(2) + "). Worth a closer look at the trend."
+      : "Below the alert threshold (" + d.threshold.toFixed(2) + ").";
+    const max = Math.max(...d.drivers.map(x => Math.abs(x.push)), 0.001);
+    $("drivers").innerHTML = d.drivers.map(x => `
+      <div class="drv"><span>${x.feature} (${x.value.toFixed(1)})</span>
+      <span>${x.push > 0 ? "raises" : "lowers"} risk</span></div>
+      <div class="bar"><span style="width:${(Math.abs(x.push)/max*100).toFixed(0)}%;background:${x.push > 0 ? "#b42318" : "#0f766e"}"></span></div>`).join("");
+  } catch (e) {
+    $("err").textContent = e.message.startsWith("Input") ? e.message : "Could not reach the server. Try again in a moment.";
+    $("err").hidden = false;
+  } finally {
+    $("go").disabled = false;
+  }
+};
+</script></body></html>
