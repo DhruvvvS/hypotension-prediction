@@ -1,0 +1,41 @@
+import sys
+from pathlib import Path
+
+from fastapi.testclient import TestClient
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from backend.main import app  # noqa: E402
+
+client = TestClient(app)
+GOOD = {"readings": [84, 83, 82, 80, 79, 77, 76, 74, 73, 71], "age": 62}
+
+
+def test_health():
+    assert client.get("/health").json() == {"status": "ok"}
+
+
+def test_predict_ok():
+    r = client.post("/predict", json=GOOD)
+    assert r.status_code == 200
+    body = r.json()
+    assert 0 <= body["risk"] <= 1
+    assert isinstance(body["alert"], bool)
+    assert len(body["drivers"]) == 5
+
+
+def test_falling_map_scores_higher_than_steady():
+    steady = client.post("/predict", json={"readings": [88] * 10, "age": 62}).json()["risk"]
+    falling = client.post("/predict", json=GOOD).json()["risk"]
+    assert falling > steady
+
+
+def test_bad_input_rejected():
+    assert client.post("/predict", json={**GOOD, "readings": [80] * 9}).status_code == 422
+    assert client.post("/predict", json={**GOOD, "readings": [300] + [80] * 9}).status_code == 422
+    assert client.post("/predict", json={**GOOD, "age": 0}).status_code == 422
+
+
+def test_cors_preflight():
+    r = client.options("/predict", headers={"Origin": "https://x.vercel.app",
+                                            "Access-Control-Request-Method": "POST"})
+    assert r.status_code == 200
