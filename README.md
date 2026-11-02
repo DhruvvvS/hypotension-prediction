@@ -138,12 +138,12 @@ Response:
 - Connect the GitHub repo and keep the **root directory at the repo root**, since the server reads `src/` and `models/`.
 - Build command (Render): `pip install -r requirements.txt`
 - Start command: `uvicorn backend.main:app --host 0.0.0.0 --port $PORT`
-- Environment variable `ALLOWED_ORIGINS`: your frontend address, for example `https://yourproject.vercel.app` (no trailing slash). If unset, any website may call the API.
+- Environment variable `ALLOWED_ORIGINS`: your frontend address, https://hypotension-prediction-frontend.vercel.app (no trailing slash). If unset, any website may call the API.
 - Check `/health` after the build finishes.
 
 **Frontend (Vercel)**
-- Set `window.API_URL` in `frontend/config.js` to the backend address (no trailing slash), then commit and push.
-- Import the repo and set **Root Directory** to `frontend`. No build step is needed.
+- Set `window.API_URL` in `frontend/config.js` to https://hypotension-prediction.onrender.com, then commit and push.
+- Import the repo and set **Root Directory** to `frontend`. No build step is needed
 
 `models/xgb.json` and `models/meta.json` must be committed, because the deployed API loads them at startup.
 
